@@ -1,8 +1,8 @@
 //
 //  ViewController.swift
-//  FirstApp
+//  Счетчик
 //
-//  Created by Дмитрий Васильев on 31.10.2025.
+//  Created by Mariia Vozzhaeva 05.11.2025
 //
 
 import UIKit
