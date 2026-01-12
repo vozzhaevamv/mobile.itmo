@@ -10,17 +10,17 @@ import UIKit
 // MARK: - Products View Controller
 /// Контроллер экрана с товарами
 class ProductsViewController: UIViewController, UISearchBarDelegate {
-
+    
     // MARK: - IBOutlets
     @IBOutlet weak var tableView: UITableView?
     @IBOutlet weak var logOutButton: UIButton!
-
+    
     // MARK: - Properties
     var userName: String?
     private var products: [GoodsModel] = []
     private var filteredProducts: [GoodsModel] = []
-      private var isSearching = false
-      private var searchBar: UISearchBar?
+    private var isSearching = false
+    private var searchBar: UISearchBar?
     private let searchService = SearchService()
     
     // MARK: - Lifecycle
@@ -30,11 +30,11 @@ class ProductsViewController: UIViewController, UISearchBarDelegate {
         setupSearchBar()
         loadProducts()
     }
-
+    
     // MARK: - Setup
     private func setupUI() {
         title = "Товары"
-
+        
         if tableView != nil {
             setupTableView()
         } else {
@@ -43,24 +43,24 @@ class ProductsViewController: UIViewController, UISearchBarDelegate {
     }
     
     private func setupSearchBar() {
-            let search = UISearchBar()
-            search.delegate = self
-            search.placeholder = "Поиск товаров..."
-            search.searchBarStyle = .minimal
-            
-            // Добавляем SearchBar в navigation bar
-            navigationItem.titleView = search
-
-            
-            self.searchBar = search
-        }
+        let search = UISearchBar()
+        search.delegate = self
+        search.placeholder = "Поиск товаров..."
+        search.searchBarStyle = .minimal
+        
+        // Добавляем SearchBar в navigation bar
+        navigationItem.titleView = search
+        
+        
+        self.searchBar = search
+    }
     private func setupTableView() {
         tableView?.delegate = self
         tableView?.dataSource = self
         tableView?.register(UITableViewCell.self, forCellReuseIdentifier: "GoodsCell")
         tableView?.rowHeight = 80
     }
-
+    
     private func setupTableViewProgrammatically() {
         let table = UITableView(frame: view.bounds, style: .plain)
         table.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -68,35 +68,64 @@ class ProductsViewController: UIViewController, UISearchBarDelegate {
         table.dataSource = self
         table.register(UITableViewCell.self, forCellReuseIdentifier: "GoodsCell")
         table.rowHeight = 80
-
+        
         view.insertSubview(table, at: 0)
         tableView = table
     }
-
+    
     // MARK: - Data Loading
     private func loadProducts() {
-        products = GoodsModel.mockGoods()
-        filteredProducts = products
-        tableView?.reloadData()
+        DatabaseService.shared.loadProducts { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                
+                switch result {
+                case .success(let items):
+                    self.products = items
+                    self.filteredProducts = items
+                    self.tableView?.reloadData()
+                case .failure(let error):
+                    self.showDataError(error)
+                }
+            }
+        }
     }
-
     // MARK: - IBActions
     @IBAction func logOutButtonTapped() {
         // Handled by segue
     }
-
+    
     @IBAction func unwindToProductsViewController(segue: UIStoryboardSegue) {
         dismiss(animated: true)
     }
-
+    
     // MARK: - Navigation
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "toCart" {
             // Cart segue - handled automatically
         }
     }
+    // MARK: - Error Alert
+    private func showDataError(_ error: DataError) {
+        let message: String
+        switch error {
+        case .fileNotFound:
+            message = "Файл products.json не найден в приложении."
+        case .readFailed:
+            message = "Не удалось прочитать данные из products.json."
+        case .decodeFailed:
+            message = "Ошибка разбора JSON. Проверь структуру файла и GoodsResponse."
+        }
+        
+        let alert = UIAlertController(
+            title: "Ошибка загрузки товаров",
+            message: message,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
 }
-
 // MARK: - UITableViewDataSource
 extension ProductsViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
